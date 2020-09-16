@@ -2,8 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import "./App.sass";
 
-const query = `query{
-  superheroCollection {
+
+
+function App() {
+  const [data, setData] = useState(null);
+  const { isAuthenticated, loginWithRedirect, logout, user } = useAuth0();
+  const [role, setRole] = useState('Anonymous');
+
+  const query = `query {
+  superheroCollection(where: {role_contains_all: ["${role}"]}) {
     items {
       name
       role
@@ -16,9 +23,13 @@ const query = `query{
 }
 `;
 
-function App() {
-  const [data, setData] = useState(null);
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
+  useEffect(()=> {
+    if (user) {
+      const roleFromToken = user["http://contentful-demo/roles"][0];
+      setRole(roleFromToken);
+    }
+  }, [user]);
+
 
   useEffect(() => {
     window
@@ -34,7 +45,7 @@ function App() {
       )
       .then((response) => response.json())
       .then((json) => setData(json.data));
-  }, []);
+  }, [query, role]);
   if (!data) return <span>Loading :(</span>;
   console.log(data);
   return (
@@ -46,13 +57,16 @@ function App() {
       >
         <div class="navbar-menu">
           <div class="navbar-start">
-            <p class="navbar-item">Super Hero Gifs!</p>
+            {!isAuthenticated && <p class="navbar-item">Super Hero Gifs!</p> }
+            {isAuthenticated && <p class="navbar-item">Hi {user.name}</p> }
           </div>
         </div>
         <div class="navbar-end">
           <div class="navbar-item">
             <div class="buttons">
-              <button onClick={loginWithRedirect}>Log in</button>
+              {!isAuthenticated && <button onClick={ loginWithRedirect } >Log in</button> }
+              {isAuthenticated && <button onClick={ () => logout({returnTo: window.location.origin }) } >Logout</button> }
+
             </div>
           </div>
         </div>
@@ -62,7 +76,7 @@ function App() {
         <div class="container">
           <div class="columns is-multiline">
             {data.superheroCollection.items.map((item, index) => (
-              <div class="column is-narrow" key={index}>
+              <div class="column is-one-quarter" key={index}>
                 <div class="card ">
    
                   <div class="card-image">
